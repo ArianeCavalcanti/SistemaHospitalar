@@ -1,7 +1,3 @@
-/*
- * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
- * Click nbfs://nbhost/SystemFileSystem/Templates/Classes/Class.java to edit this template
- */
 package dao;
 
 import java.sql.Connection;
@@ -19,8 +15,16 @@ ela é responsável por realizar as operações de cadastro e busca de pacientes
  */
 public class PacienteDAO {
 
-    private ConexaoBanco conexao;
+    private final ConexaoBanco conexao;
     private Connection con;
+    private String NOME;
+    private String rg;
+    private String cpf;
+    private String endereco;
+    private String email;
+    private String telefone;
+    private String dataNascimento;
+    private String idConvenio;
 
     /*No construtor da classe, a instância de ConexaoBanco é criada e 
     armazenada no atributo conexao. 
@@ -32,38 +36,43 @@ public class PacienteDAO {
 
     // método cadastrarPaciente
     public void cadastrarPaciente(Paciente pac) throws SQLException {
+    try {
+        con = conexao.getConexao();
+        SimpleDateFormat sdf = new SimpleDateFormat("yyyy/MM/dd");
 
-        try {
+        // String com a instrução SQL
+        String sql = "INSERT INTO PACIENTE (NOME,ENDERECO,DATA_NASC,TELEFONE,CPF,RG,EMAIL, ID_CONVENIO_FK) VALUES ( ?,?, ?, ?, ?, ?, ?,?)";
 
-            con = conexao.getConexao();
-            SimpleDateFormat sdf = new SimpleDateFormat("yyyy/MM/dd");
+        // Depuração: Verificar se o email está sendo passado corretamente
+        System.out.println("Email do paciente: " + pac.getEmail());
 
-            // String que receberá instrução SQL
-            String sql = "insert into PACIENTE(NOME, ENDERECO, DATA_NASC, TELEFONE, CPF, RG, ID_CONVENIO_FK) values(?,?,?,?,?,?,?)";
+        PreparedStatement pst = this.con.prepareStatement(sql);
 
-            PreparedStatement pst = this.con.prepareStatement(sql);
+        // Atribuindo valores aos parâmetros
+        pst.setString(1, pac.getNome());
+        pst.setString(2, pac.getEndereco());
+        pst.setString(3, sdf.format(pac.getDataNascimento()));
+        pst.setString(4, pac.getTelefone());
+        pst.setString(5, pac.getCpf());
+        pst.setString(6, pac.getRg());
 
-            // Atribuindo valores aos parâmetros
-            pst.setString(1, pac.getNome());
-            pst.setString(2, pac.getEndereco());
-            pst.setString(3, sdf.format(pac.getDataNascimento()));
-            pst.setString(4, pac.getTelefone());
-            pst.setString(5, pac.getCpf());
-            pst.setString(6, pac.getRg());
-            pst.setInt(7, pac.getIdConvenio());
+        // Temporariamente, sempre definindo o email diretamente sem condicional
+        pst.setString(7, pac.getEmail());
 
-            // Executando o PreparedStatement
-            pst.execute();
+        pst.setInt(8, pac.getIdConvenio());
 
-        } catch (SQLException se) {
-            throw new SQLException("Erro ao inserir dados no Banco de Dados! " + se.getMessage());
-        } finally {
+        // Executando a instrução
+        pst.executeUpdate();
 
-            // Encerrando as conexões
+    } catch (SQLException se) {
+        throw new SQLException("Erro ao inserir dados no Banco de Dados! " + se.getMessage());
+    } finally {
+        if (con != null) {
             con.close();
+        }
+    }
+}
 
-        } // fecha finally
-    }// fecha método cadastrarPaciente
 
     // método buscarPaciente com condição
     public ArrayList<Paciente> buscarPacienteFiltro(String query) throws SQLException {
@@ -106,6 +115,7 @@ public class PacienteDAO {
                 pac.setTelefone(rs.getString("TELEFONE"));
                 pac.setCpf(rs.getString("CPF"));
                 pac.setRg(rs.getString("RG"));
+                pac.setEmail(rs.getString("EMAIL"));
                 pac.setIdConvenio(rs.getInt("ID_CONVENIO_FK"));
 
 
@@ -160,6 +170,7 @@ public class PacienteDAO {
                 pac.setTelefone(rs.getString("TELEFONE"));
                 pac.setCpf(rs.getString("CPF"));
                 pac.setRg(rs.getString("RG"));
+                pac.setEmail(rs.getString("EMAIL"));
                 pac.setIdConvenio(rs.getInt("ID_CONVENIO_FK"));
 
                 /* Inserindo o objeto pac no ArrayList */
@@ -175,5 +186,58 @@ public class PacienteDAO {
             con.close();
         }
     }
+    @Override
+public String toString() {
+    return "Paciente{" +
+           "Nome='" + NOME + '\'' +
+           ", CPF='" + cpf + '\'' +
+           ", RG='" + rg + '\'' +
+           ", Endereço='" + endereco + '\'' +
+           ", Telefone='" + telefone + '\'' +
+           ", Email='" + email + '\'' +
+           ", Data de Nascimento=" + dataNascimento +
+           ", ID do Convênio=" + idConvenio +
+           '}';
+}
 
+
+    public boolean isCpfUnique(String cpf) throws SQLException {
+        String sql = "SELECT COUNT(*) AS total FROM PACIENTE WHERE CPF = ?";
+        try {
+            con = conexao.getConexao();
+            PreparedStatement pst = con.prepareStatement(sql);
+            pst.setString(1, cpf);
+            ResultSet rs = pst.executeQuery();
+            // CPF é único
+
+            return !(rs.next() && rs.getInt("total") > 0);
+
+        } catch (SQLException se) {
+            throw new SQLException("Erro ao verificar CPF no Banco de Dados! " + se.getMessage());
+        } finally {
+            if (con != null) {
+                con.close();
+            }
+        }
+    }
+
+    public boolean isRgUnique(String rg) throws SQLException {
+        String sql = "SELECT COUNT(*) AS total FROM PACIENTE WHERE RG = ?";
+        try {
+            con = conexao.getConexao();
+            PreparedStatement pst = con.prepareStatement(sql);
+            pst.setString(1, rg);
+            ResultSet rs = pst.executeQuery();
+            // RG é único
+
+            return !(rs.next() && rs.getInt("total") > 0);
+
+        } catch (SQLException se) {
+            throw new SQLException("Erro ao verificar RG no Banco de Dados! " + se.getMessage());
+        } finally {
+            if (con != null) {
+                con.close();
+            }
+        }
+    }
 }
