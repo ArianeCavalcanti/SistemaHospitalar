@@ -1,16 +1,19 @@
-
 package visao;
 
 import dao.ConvenioDAO;
 import dao.PacienteDAO;
+import java.awt.HeadlessException;
+import java.sql.SQLException;
+import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import javax.swing.JOptionPane;
-
 import modelo.Convenio;
 import modelo.Paciente;
 import servicos.ConvenioServicos;
 import servicos.ServicosFactory;
+
+
 
 public class GuiCadPaciente extends javax.swing.JInternalFrame {
 
@@ -44,8 +47,8 @@ public class GuiCadPaciente extends javax.swing.JInternalFrame {
         jtDataNasc = new javax.swing.JTextField();
         jtTelefone = new javax.swing.JTextField();
         jlTelefone = new javax.swing.JLabel();
-        jlEmail1 = new javax.swing.JLabel();
-        jtEmail1 = new javax.swing.JTextField();
+        jlEmail = new javax.swing.JLabel();
+        jtEmail = new javax.swing.JTextField();
         jlRG = new javax.swing.JLabel();
         jtRG = new javax.swing.JTextField();
         jcConvenio = new javax.swing.JComboBox<>();
@@ -99,11 +102,11 @@ public class GuiCadPaciente extends javax.swing.JInternalFrame {
         jLayeredPane1.add(jlTelefone);
         jlTelefone.setBounds(40, 180, 50, 30);
 
-        jlEmail1.setText("E-mal");
-        jLayeredPane1.add(jlEmail1);
-        jlEmail1.setBounds(40, 220, 90, 30);
-        jLayeredPane1.add(jtEmail1);
-        jtEmail1.setBounds(140, 220, 210, 30);
+        jlEmail.setText("E-mal");
+        jLayeredPane1.add(jlEmail);
+        jlEmail.setBounds(40, 220, 90, 30);
+        jLayeredPane1.add(jtEmail);
+        jtEmail.setBounds(140, 220, 210, 30);
 
         jlRG.setText("RG");
         jLayeredPane1.add(jlRG);
@@ -161,103 +164,148 @@ public class GuiCadPaciente extends javax.swing.JInternalFrame {
         pack();
     }// </editor-fold>//GEN-END:initComponents
 
+   private boolean emptyFields() {
+        boolean empty = true;
+
+        if (jtNome.getText().trim().isEmpty()) {
+            JOptionPane.showMessageDialog(rootPane, "ATENÇÃO! Nome não pode ser vazio.");
+        } else if (jtCpf.getText().trim().isEmpty()) {
+            JOptionPane.showMessageDialog(rootPane, "ATENÇÃO! CPF não pode ser vazio.");
+        } else if (jtRG.getText().trim().isEmpty()) {
+            JOptionPane.showMessageDialog(rootPane, "ATENÇÃO! RG não pode ser vazio.");
+        } else if (jtEndereco.getText().trim().isEmpty()) {
+            JOptionPane.showMessageDialog(rootPane, "ATENÇÃO! Endereço não pode ser vazio.");
+        } else if (jtTelefone.getText().trim().isEmpty()) {
+            JOptionPane.showMessageDialog(rootPane, "ATENÇÃO! Telefone não pode ser vazio.");
+        } else if (jtDataNasc.getText().trim().isEmpty()) {
+            JOptionPane.showMessageDialog(rootPane, "ATENÇÃO! Data de Nascimento não pode ser vazio.");
+        } else if (jcConvenio.getSelectedIndex() == 0 || jcConvenio.getSelectedItem() == null) {
+            JOptionPane.showMessageDialog(rootPane, "ATENÇÃO! Convênio não pode ser vazio.");
+        } else {
+            empty = false;
+        }
+
+        return empty;
+    }
+
     private void cadastrar() {
         try {
+            // Verificando se o CPF e RG são únicos
+            String cpf = jtCpf.getText().trim();
+            String rg = jtRG.getText().trim();
 
+            // Verifica se o CPF e RG já estão cadastrados
+            PacienteDAO pacDAO = new PacienteDAO();
+            if (!pacDAO.isCpfUnique(cpf)) {
+                JOptionPane.showMessageDialog(null, "Este CPF já está cadastrado.");
+                return;
+            }
+
+            if (!pacDAO.isRgUnique(rg)) {
+                JOptionPane.showMessageDialog(null, "Este RG já está cadastrado.");
+                return;
+            }
+
+            // Validar o formato da data
+            String dataNasc = jtDataNasc.getText().trim();
+            if (!isValidDate(dataNasc)) {
+                return;  // Se a data for inválida, interrompe o cadastro
+            }
+
+            // Se tudo estiver correto, continua o cadastro
             SimpleDateFormat sdf = new SimpleDateFormat("dd/MM/yyyy");
 
             Paciente pac = new Paciente();
-
-            // Atribuindo valores aos atributos do Paciente com base nos campos preenchidos pelo usuário na tela
             pac.setNome(jtNome.getText());
             pac.setEndereco(jtEndereco.getText());
-            pac.setDataNascimento(sdf.parse(jtDataNasc.getText()));
+            pac.setDataNascimento(sdf.parse(dataNasc));  // Usa a data formatada
             pac.setTelefone(jtTelefone.getText());
-            pac.setCpf(jtCpf.getText());
-            pac.setRg(jtRG.getText());
+            pac.setCpf(cpf);
+            pac.setRg(rg);
 
-            // Verificando se um convênio foi selecionado no JComboBox
-            if (!(jcConvenio.getSelectedIndex() == 0)) {
-
-                // Obtendo o nome do convênio selecionado pelo usuário
+            // Verificando o convênio
+            if (jcConvenio.getSelectedIndex() != 0) {
                 String conv = jcConvenio.getSelectedItem().toString();
-
-                // Criando objeto ConvenioDAO para buscar o convênio no banco de dados
                 ConvenioDAO convDAO = new ConvenioDAO();
-
-                // Buscando o convênio no banco de dados com base no nome selecionado pelo usuário
                 Convenio convenio = convDAO.buscarConvenioFiltro(conv);
-
-                // Atribuindo o ID do convênio ao paciente
                 pac.setConvenio(convenio.getIdConvenio());
-
             } else {
-                JOptionPane.showMessageDialog(this,
-                        "Selecione um produto");
-            } // fecha else
+                JOptionPane.showMessageDialog(null, "Selecione um convênio válido.");
+                return; // Impede o cadastro se o convênio não for selecionado
+            }
 
-           // Criando objeto PacienteDAO para cadastrar o paciente no banco de dados
-            PacienteDAO pacDAO = new PacienteDAO();
+            // Cadastrando paciente no banco de dados
             pacDAO.cadastrarPaciente(pac);
+            JOptionPane.showMessageDialog(null, "Paciente cadastrado com sucesso!");
 
-            // Mensagem de sucesso
-            JOptionPane.showMessageDialog(this, "Paciente cadastrado com sucesso!");
+        } catch (HeadlessException | SQLException | ParseException e) {
+            JOptionPane.showMessageDialog(null, "ERRO! " + e.getMessage());
+        }
+    }
 
-        } catch (Exception e) {
-            JOptionPane.showMessageDialog(this,
-                    "ERRO! " + e.getMessage());
-        } // fecha catch
+    private boolean isValidDate(String dataNasc) {
+        // A expressão regular para o formato DD/MM/AAAA
+        String regex = "^(0[1-9]|[12][0-9]|3[01])/(0[1-9]|1[0-2])/\\d{4}$";
 
-    }// fecha método
+        // Verificar se a data corresponde ao formato
+        if (!dataNasc.matches(regex)) {
+            JOptionPane.showMessageDialog(null, "Por favor, insira uma data válida (DD/MM/AAAA).");
+            return false;
+        }
 
-    //apaga valores dos campos
-    private void limpar() {
+        try {
+            // Tentando fazer o parse da data no formato dd/MM/yyyy
+            SimpleDateFormat sdf = new SimpleDateFormat("dd/MM/yyyy");
+            sdf.setLenient(false);
+            sdf.parse(dataNasc); // Se a data for inválida, lançará uma exceção
+        } catch (ParseException e) {
+            JOptionPane.showMessageDialog(null, "Data inválida. Por favor, insira uma data válida (DD/MM/AAAA).");
+            return false;
+        }
+
+        return true; // Se passar nas validações, retorna verdadeiro
+    }
+
+// Ação do botão "Limpar"
+    private void jbLimparActionPerformed(java.awt.event.ActionEvent evt) {
+        limparCampos();  // Chama o método de limpeza
+    }
+
+// Ação do botão "Cadastrar"
+    private void jbCadastrar1ActionPerformed(java.awt.event.ActionEvent evt) {
+        if (!emptyFields()) {  // Verifica se os campos não estão vazios
+            cadastrar();  // Chama o método de cadastro
+        }
+    }
+
+    private void limparCampos() {
+
         jtNome.setText("");
         jtEndereco.setText("");
+        jtDataNasc.setText("");
+        jtTelefone.setText("");
         jtCpf.setText("");
-    }// fecha método
+        jtRG.setText("");
+        jtEmail.setText("");
+        jcConvenio.setSelectedIndex(0);
 
-    
+        jtNome.requestFocus();
+    }
+
     // metodo para preencher o combo box com os produtos cadastrados no banco de dados
     private void preencherCombo() {
         try {
-
-            // Buscando objeto ProdutoServicos
             ConvenioServicos ps = ServicosFactory.getConvenioServicos();
+            ArrayList<Convenio> convenios = ps.buscarConvenio();
 
-            /*
-             * Criando um ArrayList<ProdutoVO> vazio
-             * para receber o ArrayList com os dados
-             */
-            ArrayList<Convenio> p = new ArrayList<>();
-
-            // Recebendo o ArrayList cheio em produtos
-            p = ps.buscarConvenio();
-
-            // Adicionando os dados do ArrayList no JComboBox
             jcConvenio.addItem("-Selecione-");
-            for (int i = 0; i < p.size(); i++) {
-
-                // Adicionando o nome do convênio ao JComboBox
-                jcConvenio.addItem(p.get(i).getNomeConvenio());
-
-            } // fecha for
-
-        } catch (Exception e) {
-            JOptionPane.showMessageDialog(this,
-                    "Erro! " + e.getMessage());
-        } // fecha catch
-    }// fecha classe
-
-    private void jbLimparActionPerformed(java.awt.event.ActionEvent evt) {
-        limpar();
+            for (Convenio convenio : convenios) {
+                jcConvenio.addItem(convenio.getNomeConvenio());
+            }
+        } catch (SQLException e) {
+            JOptionPane.showMessageDialog(this, "Erro ao preencher combo: " + e.getMessage());
+        }
     }
-
-    private void jbCadastrar1ActionPerformed(java.awt.event.ActionEvent evt) {
-        cadastrar();
-        limpar();
-    }
-
     // Variables declaration - do not modify//GEN-BEGIN:variables
     private javax.swing.JLayeredPane jLayeredPane1;
     private javax.swing.JLayeredPane jLayeredPane2;
@@ -266,7 +314,7 @@ public class GuiCadPaciente extends javax.swing.JInternalFrame {
     private javax.swing.JComboBox<String> jcConvenio;
     private javax.swing.JLabel jlCpf;
     private javax.swing.JLabel jlDataNasc;
-    private javax.swing.JLabel jlEmail1;
+    private javax.swing.JLabel jlEmail;
     private javax.swing.JLabel jlEndereco;
     private javax.swing.JLabel jlEspecialidade;
     private javax.swing.JLabel jlNome;
@@ -274,7 +322,7 @@ public class GuiCadPaciente extends javax.swing.JInternalFrame {
     private javax.swing.JLabel jlTelefone;
     private javax.swing.JTextField jtCpf;
     private javax.swing.JTextField jtDataNasc;
-    private javax.swing.JTextField jtEmail1;
+    private javax.swing.JTextField jtEmail;
     private javax.swing.JTextField jtEndereco;
     private javax.swing.JTextField jtNome;
     private javax.swing.JTextField jtRG;
