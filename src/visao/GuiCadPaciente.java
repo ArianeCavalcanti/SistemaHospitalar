@@ -13,8 +13,6 @@ import modelo.Paciente;
 import servicos.ConvenioServicos;
 import servicos.ServicosFactory;
 
-
-
 public class GuiCadPaciente extends javax.swing.JInternalFrame {
 
     /**
@@ -23,6 +21,7 @@ public class GuiCadPaciente extends javax.swing.JInternalFrame {
     public GuiCadPaciente() {
         initComponents();
         preencherCombo();
+
     }
 
     /**
@@ -47,7 +46,7 @@ public class GuiCadPaciente extends javax.swing.JInternalFrame {
         jtDataNasc = new javax.swing.JTextField();
         jtTelefone = new javax.swing.JTextField();
         jlTelefone = new javax.swing.JLabel();
-        jlEmail = new javax.swing.JLabel();
+        jlEmail1 = new javax.swing.JLabel();
         jtEmail = new javax.swing.JTextField();
         jlRG = new javax.swing.JLabel();
         jtRG = new javax.swing.JTextField();
@@ -102,9 +101,9 @@ public class GuiCadPaciente extends javax.swing.JInternalFrame {
         jLayeredPane1.add(jlTelefone);
         jlTelefone.setBounds(40, 180, 50, 30);
 
-        jlEmail.setText("E-mal");
-        jLayeredPane1.add(jlEmail);
-        jlEmail.setBounds(40, 220, 90, 30);
+        jlEmail1.setText("E-mail(Opcional)");
+        jLayeredPane1.add(jlEmail1);
+        jlEmail1.setBounds(40, 220, 90, 30);
         jLayeredPane1.add(jtEmail);
         jtEmail.setBounds(140, 220, 210, 30);
 
@@ -164,15 +163,13 @@ public class GuiCadPaciente extends javax.swing.JInternalFrame {
         pack();
     }// </editor-fold>//GEN-END:initComponents
 
-   private boolean emptyFields() {
+    private boolean emptyFields() {
         boolean empty = true;
 
         if (jtNome.getText().trim().isEmpty()) {
             JOptionPane.showMessageDialog(rootPane, "ATENÇÃO! Nome não pode ser vazio.");
         } else if (jtCpf.getText().trim().isEmpty()) {
             JOptionPane.showMessageDialog(rootPane, "ATENÇÃO! CPF não pode ser vazio.");
-        } else if (jtRG.getText().trim().isEmpty()) {
-            JOptionPane.showMessageDialog(rootPane, "ATENÇÃO! RG não pode ser vazio.");
         } else if (jtEndereco.getText().trim().isEmpty()) {
             JOptionPane.showMessageDialog(rootPane, "ATENÇÃO! Endereço não pode ser vazio.");
         } else if (jtTelefone.getText().trim().isEmpty()) {
@@ -190,80 +187,130 @@ public class GuiCadPaciente extends javax.swing.JInternalFrame {
 
     private void cadastrar() {
         try {
-            // Verificando se o CPF e RG são únicos
+            // Obtendo os valores dos campos
             String cpf = jtCpf.getText().trim();
+            String telefone = jtTelefone.getText().trim();
             String rg = jtRG.getText().trim();
-
-            // Verifica se o CPF e RG já estão cadastrados
-            PacienteDAO pacDAO = new PacienteDAO();
-            if (!pacDAO.isCpfUnique(cpf)) {
-                JOptionPane.showMessageDialog(null, "Este CPF já está cadastrado.");
-                return;
-            }
-
-            if (!pacDAO.isRgUnique(rg)) {
-                JOptionPane.showMessageDialog(null, "Este RG já está cadastrado.");
-                return;
-            }
-
-            // Validar o formato da data
             String dataNasc = jtDataNasc.getText().trim();
-            if (!isValidDate(dataNasc)) {
-                return;  // Se a data for inválida, interrompe o cadastro
+
+            // Validações
+            if (!validarCPF(cpf)) {
+                return;
             }
 
-            // Se tudo estiver correto, continua o cadastro
-            SimpleDateFormat sdf = new SimpleDateFormat("dd/MM/yyyy");
+            if (!validarRG(rg)) {
+                return;
+            }
 
+            if (!validarTelefone(telefone)) {
+                return;
+            }
+
+            if (!ValidarDataNascimento(dataNasc)) {
+                return;
+            }
+
+            // Criando o objeto Paciente
+            SimpleDateFormat sdf = new SimpleDateFormat("dd/MM/yyyy");
             Paciente pac = new Paciente();
             pac.setNome(jtNome.getText());
             pac.setEndereco(jtEndereco.getText());
-            pac.setDataNascimento(sdf.parse(dataNasc));  // Usa a data formatada
-            pac.setTelefone(jtTelefone.getText());
+            pac.setDataNascimento(sdf.parse(dataNasc));
+            pac.setTelefone(telefone);
             pac.setCpf(cpf);
             pac.setRg(rg);
+            pac.setEmail(jtEmail.getText());
 
             // Verificando o convênio
             if (jcConvenio.getSelectedIndex() != 0) {
-                String conv = jcConvenio.getSelectedItem().toString();
+                String convenioSelecionado = jcConvenio.getSelectedItem().toString();
                 ConvenioDAO convDAO = new ConvenioDAO();
-                Convenio convenio = convDAO.buscarConvenioFiltro(conv);
+                Convenio convenio = convDAO.buscarConvenioFiltro(convenioSelecionado);
                 pac.setConvenio(convenio.getIdConvenio());
             } else {
-                JOptionPane.showMessageDialog(null, "Selecione um convênio válido.");
-                return; // Impede o cadastro se o convênio não for selecionado
+                JOptionPane.showMessageDialog(this, "Selecione um convênio válido.");
+                return;
             }
 
-            // Cadastrando paciente no banco de dados
+            // Verifica se o CPF já está cadastrado
+            PacienteDAO pacDAO = new PacienteDAO();
+            if (!pacDAO.isCpfUnique(cpf)) {
+                JOptionPane.showMessageDialog(this, "Este CPF já está cadastrado.");
+                return;
+            }
+
+            // Salvando o paciente no banco
             pacDAO.cadastrarPaciente(pac);
-            JOptionPane.showMessageDialog(null, "Paciente cadastrado com sucesso!");
+            JOptionPane.showMessageDialog(this, "Paciente cadastrado com sucesso!");
 
         } catch (HeadlessException | SQLException | ParseException e) {
-            JOptionPane.showMessageDialog(null, "ERRO! " + e.getMessage());
+            JOptionPane.showMessageDialog(this, "Erro ao cadastrar: " + e.getMessage());
         }
     }
 
-    private boolean isValidDate(String dataNasc) {
-        // A expressão regular para o formato DD/MM/AAAA
+    private boolean validarCPF(String cpf) {
+        if (cpf.length() > 14) {
+            JOptionPane.showMessageDialog(this, "O CPF excedeu o limite de caracteres. Use o formato XXX.XXX.XXX-XX.");
+            return false;
+        }
+        if (!cpf.matches("\\d{3}\\.\\d{3}\\.\\d{3}-\\d{2}")) {
+            JOptionPane.showMessageDialog(this, "Por favor, insira o CPF no formato XXX.XXX.XXX-XX.");
+            return false;
+        }
+        return true;
+    }
+
+    private boolean validarRG(String rg) {
+        if (rg.trim().isEmpty()) {
+            // Se o RG estiver vazio, não faz validação.
+            return true;
+        }
+        // Se o RG não estiver vazio, realiza a validação do formato
+        if (rg.length() > 12) {
+            JOptionPane.showMessageDialog(this, "O RG excedeu o limite de caracteres. Use o formato XX.XXX.XXX-X.");
+            return false;
+        }
+        if (!rg.matches("\\d{2}\\.\\d{3}\\.\\d{3}-\\d{1}")) {
+            JOptionPane.showMessageDialog(this, "Por favor, insira o RG no formato XX.XXX.XXX-X.");
+            return false;
+        }
+        return true;
+    }
+
+    private boolean validarTelefone(String telefone) {
+        if (telefone.length() > 14) {
+            JOptionPane.showMessageDialog(this, "O telefone excedeu o limite de caracteres. Use os formatos (XX)XXXX-XXXX ou (XX)XXXXX-XXXX.");
+            return false;
+        }
+        if (!telefone.matches("\\(\\d{2}\\)\\d{4}-\\d{4}") && !telefone.matches("\\(\\d{2}\\)\\d{5}-\\d{4}")) {
+            JOptionPane.showMessageDialog(this, "Por favor, insira o telefone nos formatos (XX)XXXX-XXXX ou (XX)XXXXX-XXXX.");
+            return false;
+        }
+        return true;
+    }
+
+    private boolean ValidarDataNascimento(String dataNasc) {
         String regex = "^(0[1-9]|[12][0-9]|3[01])/(0[1-9]|1[0-2])/\\d{4}$";
 
-        // Verificar se a data corresponde ao formato
+        if (dataNasc.length() > 10) {
+            JOptionPane.showMessageDialog(this, "A data de nascimento excedeu o limite de caracteres. Use o formato DD/MM/AAAA.");
+            return false;
+        }
         if (!dataNasc.matches(regex)) {
-            JOptionPane.showMessageDialog(null, "Por favor, insira uma data válida (DD/MM/AAAA).");
+            JOptionPane.showMessageDialog(this, "Por favor, insira a data de nascimento no formato DD/MM/AAAA.");
             return false;
         }
 
         try {
-            // Tentando fazer o parse da data no formato dd/MM/yyyy
             SimpleDateFormat sdf = new SimpleDateFormat("dd/MM/yyyy");
             sdf.setLenient(false);
-            sdf.parse(dataNasc); // Se a data for inválida, lançará uma exceção
+            sdf.parse(dataNasc);
         } catch (ParseException e) {
-            JOptionPane.showMessageDialog(null, "Data inválida. Por favor, insira uma data válida (DD/MM/AAAA).");
+            JOptionPane.showMessageDialog(this, "Data de nascimento inválida. Por favor, insira uma data válida no formato DD/MM/AAAA.");
             return false;
         }
 
-        return true; // Se passar nas validações, retorna verdadeiro
+        return true;
     }
 
 // Ação do botão "Limpar"
@@ -306,6 +353,8 @@ public class GuiCadPaciente extends javax.swing.JInternalFrame {
             JOptionPane.showMessageDialog(this, "Erro ao preencher combo: " + e.getMessage());
         }
     }
+
+
     // Variables declaration - do not modify//GEN-BEGIN:variables
     private javax.swing.JLayeredPane jLayeredPane1;
     private javax.swing.JLayeredPane jLayeredPane2;
@@ -314,7 +363,7 @@ public class GuiCadPaciente extends javax.swing.JInternalFrame {
     private javax.swing.JComboBox<String> jcConvenio;
     private javax.swing.JLabel jlCpf;
     private javax.swing.JLabel jlDataNasc;
-    private javax.swing.JLabel jlEmail;
+    private javax.swing.JLabel jlEmail1;
     private javax.swing.JLabel jlEndereco;
     private javax.swing.JLabel jlEspecialidade;
     private javax.swing.JLabel jlNome;

@@ -1,7 +1,3 @@
-/*
- * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
- * Click nbfs://nbhost/SystemFileSystem/Templates/Classes/Class.java to edit this template
- */
 package dao;
 
 import java.sql.Connection;
@@ -24,7 +20,7 @@ ela é responsável por realizar as operações de cadastro e busca de convenio 
 */
 public class ConvenioDAO {
 
-    private ConexaoBanco conexao;
+    private final ConexaoBanco conexao;
     private Connection con;
 
       /*No construtor da classe, a instância de ConexaoBanco é criada e 
@@ -54,7 +50,7 @@ public class ConvenioDAO {
             rs = pst.executeQuery();
 
             //Criando um ArrayList para armazenar os objetos do tipo Convenio
-            ArrayList<Convenio> listaConvenios = new ArrayList<Convenio>();
+            ArrayList<Convenio> listaConvenios = new ArrayList<>();
 
             /* Enquanto houver uma próxima linha no banco de dados o while roda */
             while (rs.next()) {

@@ -36,43 +36,48 @@ public class PacienteDAO {
 
     // método cadastrarPaciente
     public void cadastrarPaciente(Paciente pac) throws SQLException {
-    try {
-        con = conexao.getConexao();
-        SimpleDateFormat sdf = new SimpleDateFormat("yyyy/MM/dd");
+        try {
+            con = conexao.getConexao();
+            SimpleDateFormat sdf = new SimpleDateFormat("yyyy/MM/dd");
 
-        // String com a instrução SQL
-        String sql = "INSERT INTO PACIENTE (NOME,ENDERECO,DATA_NASC,TELEFONE,CPF,RG,EMAIL, ID_CONVENIO_FK) VALUES ( ?,?, ?, ?, ?, ?, ?,?)";
+            // String com a instrução SQL
+            String sql = "INSERT INTO PACIENTE (NOME, ENDERECO, DATA_NASC, TELEFONE, CPF, RG, EMAIL, ID_CONVENIO_FK) VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
 
-        // Depuração: Verificar se o email está sendo passado corretamente
-        System.out.println("Email do paciente: " + pac.getEmail());
+            PreparedStatement pst = this.con.prepareStatement(sql);
 
-        PreparedStatement pst = this.con.prepareStatement(sql);
+            // Atribuindo valores aos parâmetros
+            pst.setString(1, pac.getNome());
+            pst.setString(2, pac.getEndereco());
+            pst.setString(3, sdf.format(pac.getDataNascimento()));
+            pst.setString(4, pac.getTelefone());
+            pst.setString(5, pac.getCpf());
 
-        // Atribuindo valores aos parâmetros
-        pst.setString(1, pac.getNome());
-        pst.setString(2, pac.getEndereco());
-        pst.setString(3, sdf.format(pac.getDataNascimento()));
-        pst.setString(4, pac.getTelefone());
-        pst.setString(5, pac.getCpf());
-        pst.setString(6, pac.getRg());
+            // Verifica RG
+            if (pac.getRg() != null && !pac.getRg().trim().isEmpty()) {
+                pst.setString(6, pac.getRg());
+            } else {
+                pst.setNull(6, java.sql.Types.VARCHAR); 
+            }
 
-        // Temporariamente, sempre definindo o email diretamente sem condicional
-        pst.setString(7, pac.getEmail());
+            // Verifica email
+            if (pac.getEmail() != null && !pac.getEmail().trim().isEmpty()) {
+                pst.setString(7, pac.getEmail());
+            } else {
+                pst.setNull(7, java.sql.Types.VARCHAR); 
+            }
 
-        pst.setInt(8, pac.getIdConvenio());
+            pst.setInt(8, pac.getIdConvenio());
 
-        // Executando a instrução
-        pst.executeUpdate();
-
-    } catch (SQLException se) {
-        throw new SQLException("Erro ao inserir dados no Banco de Dados! " + se.getMessage());
-    } finally {
-        if (con != null) {
-            con.close();
+            // Executando a instrução
+            pst.executeUpdate();
+        } catch (SQLException se) {
+            throw new SQLException("Erro ao inserir dados no Banco de Dados! " + se.getMessage());
+        } finally {
+            if (con != null) {
+                con.close();
+            }
         }
     }
-}
-
 
     // método buscarPaciente com condição
     public ArrayList<Paciente> buscarPacienteFiltro(String query) throws SQLException {
@@ -186,20 +191,20 @@ public class PacienteDAO {
             con.close();
         }
     }
-    @Override
-public String toString() {
-    return "Paciente{" +
-           "Nome='" + NOME + '\'' +
-           ", CPF='" + cpf + '\'' +
-           ", RG='" + rg + '\'' +
-           ", Endereço='" + endereco + '\'' +
-           ", Telefone='" + telefone + '\'' +
-           ", Email='" + email + '\'' +
-           ", Data de Nascimento=" + dataNascimento +
-           ", ID do Convênio=" + idConvenio +
-           '}';
-}
 
+    @Override
+    public String toString() {
+        return "Paciente{"
+                + "Nome='" + NOME + '\''
+                + ", CPF='" + cpf + '\''
+                + ", RG='" + rg + '\''
+                + ", Endereço='" + endereco + '\''
+                + ", Telefone='" + telefone + '\''
+                + ", Email='" + email + '\''
+                + ", Data de Nascimento=" + dataNascimento
+                + ", ID do Convênio=" + idConvenio
+                + '}';
+    }
 
     public boolean isCpfUnique(String cpf) throws SQLException {
         String sql = "SELECT COUNT(*) AS total FROM PACIENTE WHERE CPF = ?";
@@ -218,26 +223,7 @@ public String toString() {
             if (con != null) {
                 con.close();
             }
-        }
-    }
 
-    public boolean isRgUnique(String rg) throws SQLException {
-        String sql = "SELECT COUNT(*) AS total FROM PACIENTE WHERE RG = ?";
-        try {
-            con = conexao.getConexao();
-            PreparedStatement pst = con.prepareStatement(sql);
-            pst.setString(1, rg);
-            ResultSet rs = pst.executeQuery();
-            // RG é único
-
-            return !(rs.next() && rs.getInt("total") > 0);
-
-        } catch (SQLException se) {
-            throw new SQLException("Erro ao verificar RG no Banco de Dados! " + se.getMessage());
-        } finally {
-            if (con != null) {
-                con.close();
-            }
         }
     }
 }
